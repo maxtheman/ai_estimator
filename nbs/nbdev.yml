@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "ai_estimator"
+  site-url: "https://maxtheman.github.io/ai_estimator"
+  description: "Demo of an AI estimation and CRM agent"
+  repo-branch: main
+  repo-url: "https://github.com/maxtheman/ai_estimator"
