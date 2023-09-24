@@ -31,11 +31,12 @@ import uuid
 from enum import Enum
 
 # %% ../nbs/00_core.ipynb 4
-OPENAI_API_KEY = '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'
+# This API key has been invalidated. Please use your own API key.
+OPENAI_API_KEY = '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'
 os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 
 
-# %% ../nbs/00_core.ipynb 5
+# %% ../nbs/00_core.ipynb 6
 class SupportedTrade(str, Enum):
     roofing = "roofing"
 
@@ -174,26 +175,31 @@ class RoofEstimate(BaseModel):
             return material_lists
 
 
-# %% ../nbs/00_core.ipynb 7
+# %% ../nbs/00_core.ipynb 9
 class TaxRules(BaseModel):
+    '''Tax rules for a location. Represents the tax rules for a location. Set on a per-location basis.'''
     location: str
     rate: float
 
 class EstimateStatus(str, Enum):
+    '''Status of an estimate. Represents the status of an estimate. Set on a per-estimate basis.'''
     DRAFT = "draft"
     DELIVERED = "delivered"
     REVIEWED = "reviewed"
 
 class Settings(BaseModel):
+    '''Settings for an estimate. Represents the assumptions for an estimate. Set on a per-estimate basis.'''
     universal_profit_margin: float
     default_valid_until_days: int
 
 class Employee(BaseModel):
+    '''Employee information. Represents the information of an employee. Set on a per-employee basis.'''
     name: str
     role: str
     email: str
 
 class Estimate(BaseModel):
+    '''Estimate for a job. Represents the output of the estimate calculator. Saved to the property.'''
     id: str
     version: int
     trades: SupportedTrade
@@ -208,29 +214,34 @@ class Estimate(BaseModel):
     estimator: Employee
 
 class BuildingStructure(BaseModel):
+    '''Building structure. Represents a building structure. Saved to the property.'''
     id: str
     name: str
     roof_measurements: RoofInputMeasurements
     estimates: Optional[Union[List[Estimate], Estimate]]
 
 class OpportunityStage(Enum):
+    '''Opportunity stage. Represents the stage of an opportunity. Saved to the property.'''
     LEAD = "lead"
     ESTIMATE = "estimate"
     CONTRACT = "contract"
     JOB = "job"
 
 class Property(BaseModel):
+    '''Property. Represents a property. Saved to the property owner.'''
     id: str
     opportunity_stage: OpportunityStage
     name: str
     structures: List[BuildingStructure]
 
 class PropertyOwner(BaseModel):
+    '''Property owner. Represents a property owner. Saved to the opportunity.'''
     id: str
     name: str
     properties: List[Property]
 
-# %% ../nbs/00_core.ipynb 9
+# %% ../nbs/00_core.ipynb 11
+#commented out materials means I didn't implement the calculations for them yet
 materials_gaf = {
     "materials": [
         {
@@ -355,28 +366,29 @@ property_owner = {
 }
 
 @tool
-def get_materials_template(x):
+def get_materials_template(template_name: str):
     '''Get the materials template from the database.'''
+    settings = RoofingSettings(shingles_per_square=100, underlayment_per_square=200, sheathing_per_square=300, nails_per_square=400, ridge_cap_shingles_per_linear_foot=500)
     material_template = MaterialTemplate(name="GAF Template", materials=materials_gaf["materials"], settings=settings)
     return material_template
 
 @tool
-def get_building_structure(x):
+def get_building_structure(building_id: str):
     '''Get the building structure from the database.'''
     return BuildingStructure(id=building_structure["id"], name=building_structure['name'], roof_measurements=building_structure['roof_measurements'], estimates=building_structure['estimates'])
 
 @tool
-def get_property(x: str):
+def get_property(property_id: str):
     '''Get the property from the database.'''
     return Property(id=property['id'], opportunity_stage=property['opportunity_stage'], name=property['name'], structures=property['structures'])
 
 @tool
-def get_property_owner(x):
+def get_property_owner(owner_id: str):
     '''Get the property owner from the database.'''
     return PropertyOwner(id=property_owner['id'], name=property_owner['name'], properties=property_owner['properties'])
 
 @tool
-def get_property_owner_details(name):
+def get_property_owner_details(name: str):
     '''Get the property owner details from the database.
     Returns the property owner name and properties ids along with opportunity stage in a human readable format.'''
     property_owner = get_property_owner(name).model_dump()
@@ -393,7 +405,7 @@ def get_property_owner_details(name):
     return details
 
 
-def make_estimate_with_property(id, material_list_name):
+def make_estimate_with_property(id: str, material_list_name: str):
     '''Create an estimate with a property.'''
     material_template = get_materials_template(material_list_name)
     estimator = Employee(**employee)
@@ -403,7 +415,7 @@ def make_estimate_with_property(id, material_list_name):
     estimate = Estimate(id=str(uuid.uuid4()), version=1, trades=SupportedTrade.roofing, material_lists=[material_list], additional_costs={}, labor_items={}, total_cost=0, status=EstimateStatus.DRAFT, valid_until=datetime.now() + timedelta(days=30), tax=TaxRules(location="CA", rate=0.1), primary_contact=primary_contact, estimator=estimator)
     return estimate
 
-# %% ../nbs/00_core.ipynb 15
+# %% ../nbs/00_core.ipynb 18
 def gradio_agent(msg, history):
     tools = [StructuredTool.from_function(make_estimate_with_property), get_property_owner_details, get_property_owner, get_property, get_building_structure, get_materials_template]
     agent_kwargs = {

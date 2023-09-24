@@ -15,7 +15,7 @@ from modal import asgi_app
 # %% ../nbs/01_server.ipynb 2
 web_app = FastAPI()
 image = modal.Image.debian_slim().pip_install("pandas", "numpy", "langchain", "gradio","pydantic==2.3.0", "openai")
-stub = modal.Stub()
+stub = modal.Stub("ai_estimator")
 @stub.function(
     image=image,
     secret=modal.Secret.from_name("OPENAI_API_KEY"),
@@ -25,7 +25,7 @@ stub = modal.Stub()
 def run_server():
     return mount_gradio_app(
         app=web_app,
-        blocks=gr.ChatInterface(gradio_agent),
+        blocks=gr.ChatInterface(gradio_agent, chatbot=gr.Chatbot(height=600)),
         path="/",
     )
     
